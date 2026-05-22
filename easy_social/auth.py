@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
 from .extensions import db
 from .models import User
+from .turnstile import verify_turnstile_token
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -20,14 +21,26 @@ def register():
         password = request.form.get("password", "")
 
         error = None
-        if not username or not email or not password:
-            error = "Username, email, and password are required."
-        elif len(username) > 40:
-            error = "Username must be 40 characters or fewer."
-        elif User.query.filter_by(username=username).first():
-            error = "That username is already taken."
-        elif User.query.filter_by(email=email).first():
-            error = "That email is already registered."
+        turnstile_site_key = current_app.config.get("TURNSTILE_SITE_KEY", "")
+        turnstile_secret = current_app.config.get("TURNSTILE_SECRET_KEY", "")
+        turnstile_enabled = bool(turnstile_site_key and turnstile_secret)
+
+        if turnstile_enabled:
+            token = request.form.get("cf-turnstile-response", "")
+            if not verify_turnstile_token(token, turnstile_secret):
+                error = "CAPTCHA verification failed. Please try again."
+        elif turnstile_site_key or turnstile_secret:
+            error = "CAPTCHA configuration is incomplete. Please contact support."
+
+        if not error:
+            if not username or not email or not password:
+                error = "Username, email, and password are required."
+            elif len(username) > 40:
+                error = "Username must be 40 characters or fewer."
+            elif User.query.filter_by(username=username).first():
+                error = "That username is already taken."
+            elif User.query.filter_by(email=email).first():
+                error = "That email is already registered."
 
         if error:
             flash(error, "error")

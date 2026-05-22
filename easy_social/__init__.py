@@ -4,6 +4,10 @@ import os
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from flask import Flask
 from sqlalchemy.pool import NullPool
 
@@ -75,6 +79,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         SUPABASE_URL=os.environ.get("SUPABASE_URL"),
         SUPABASE_SERVICE_ROLE_KEY=os.environ.get("SUPABASE_SERVICE_ROLE_KEY"),
         SUPABASE_STORAGE_BUCKET=os.environ.get("SUPABASE_STORAGE_BUCKET", "easy-social-media"),
+        TURNSTILE_SITE_KEY=os.environ.get("TURNSTILE_SITE_KEY", ""),
+        TURNSTILE_SECRET_KEY=os.environ.get("TURNSTILE_SECRET_KEY", ""),
     )
 
     if test_config:

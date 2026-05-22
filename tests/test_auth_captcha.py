@@ -93,3 +93,16 @@ def test_register_without_captcha_key_succeeds(client):
     )
     assert response.status_code == 200
     assert b"Feed" in response.data
+
+def test_register_with_incomplete_captcha_config_fails(client):
+    # Only one key configured -> error
+    client.application.config["TURNSTILE_SITE_KEY"] = "some-key"
+    client.application.config["TURNSTILE_SECRET_KEY"] = ""
+    response = client.post(
+        "/auth/register",
+        data={"username": "eve", "email": "eve@example.com", "password": "password"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert b"CAPTCHA configuration is incomplete" in response.data
+    assert b"Feed" not in response.data

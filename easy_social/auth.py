@@ -21,11 +21,16 @@ def register():
         password = request.form.get("password", "")
 
         error = None
+        turnstile_site_key = current_app.config.get("TURNSTILE_SITE_KEY", "")
         turnstile_secret = current_app.config.get("TURNSTILE_SECRET_KEY", "")
-        if turnstile_secret:
+        turnstile_enabled = bool(turnstile_site_key and turnstile_secret)
+
+        if turnstile_enabled:
             token = request.form.get("cf-turnstile-response", "")
             if not verify_turnstile_token(token, turnstile_secret):
                 error = "CAPTCHA verification failed. Please try again."
+        elif turnstile_site_key or turnstile_secret:
+            error = "CAPTCHA configuration is incomplete. Please contact support."
 
         if not error:
             if not username or not email or not password:

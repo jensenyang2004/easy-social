@@ -92,6 +92,12 @@ def test_register_blocked_when_token_cleared(page, captcha_live_server):
     page.fill("[name=email]", "notcreated@example.com")
     page.fill("[name=password]", "s3cret!")
 
+    # Wait until Turnstile has populated the token, then blank it.
+    page.wait_for_function(
+        "() => (document.querySelector('[name=\"cf-turnstile-response\"]') || {}).value !== ''",
+        timeout=15_000,
+    )
+
     # Blank the hidden token to simulate a missing/tampered response.
     page.evaluate(
         """() => {

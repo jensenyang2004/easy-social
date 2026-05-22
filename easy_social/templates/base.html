@@ -6,6 +6,7 @@
     <title>{% block title %}楊景丞のEasy Social{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
     <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block extra_head %}{% endblock %}
   </head>
   <body>
     <header class="topbar">

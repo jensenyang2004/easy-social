@@ -23,6 +23,7 @@ def captcha_app():
                 "UPLOAD_FOLDER": str(Path(temp_dir) / "uploads"),
                 "MEDIA_STORAGE_BACKEND": "local",
                 "WTF_CSRF_ENABLED": False,
+                "TURNSTILE_SITE_KEY": "test-site-key",
                 "TURNSTILE_SECRET_KEY": "test-secret-key",
             }
         )

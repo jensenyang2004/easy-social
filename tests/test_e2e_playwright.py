@@ -48,7 +48,7 @@ def captcha_live_server():
 
         try:
             server = make_server("127.0.0.1", 0, app, threaded=True)
-        except SystemExit:
+        except OSError:
             pytest.skip("Could not bind to a local port")
 
         thread = threading.Thread(target=server.serve_forever, daemon=True)

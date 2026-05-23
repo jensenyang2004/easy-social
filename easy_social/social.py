@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import desc, func, or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
+
 
 from .extensions import db
 from .media import save_media
@@ -90,14 +92,15 @@ def explore():
 @login_required
 def create_post_api():
     data = request.get_json()
-    if not data:
+    if not isinstance(data, dict):
         return {"error": "Invalid JSON"}, 400
 
-    body = data.get("content", "").strip()
-    poll_data = data.get("poll")
+    body = data.get("content")
+    if not isinstance(body, str) or not body.strip():
+        return {"error": "Content is required and must be a string"}, 400
+    body = body.strip()
 
-    if not body:
-        return {"error": "Content is required"}, 400
+    poll_data = data.get("poll")
 
     post = Post(body=body, author=current_user)
     db.session.add(post)
@@ -105,8 +108,11 @@ def create_post_api():
 
     poll_result = None
     if poll_data:
+        if not isinstance(poll_data, dict):
+            return {"error": "Poll data must be an object"}, 400
+            
         options = poll_data.get("options", [])
-        if len(options) < 2 or len(options) > 4:
+        if not isinstance(options, list) or len(options) < 2 or len(options) > 4:
             return {"error": "Poll must have between 2 and 4 options"}, 400
 
         poll = Poll(post_id=post.id)
@@ -114,11 +120,11 @@ def create_post_api():
         db.session.flush()
 
         for i, opt_text in enumerate(options):
-            if not opt_text.strip():
-                return {"error": "All options must have text"}, 400
+            if not isinstance(opt_text, str) or not opt_text.strip():
+                return {"error": "All options must have non-empty text strings"}, 400
             if len(opt_text) > 100:
                 return {"error": "Option text is too long"}, 400
-            db.session.add(PollOption(poll_id=poll.id, text=opt_text, order=i))
+            db.session.add(PollOption(poll_id=poll.id, text=opt_text.strip(), order=i))
 
         db.session.flush()
         poll_result = {
@@ -141,12 +147,12 @@ def create_post_api():
 @login_required
 def vote_poll(poll_id: str):
     data = request.get_json()
-    if not data:
+    if not isinstance(data, dict):
         return {"error": "Invalid JSON"}, 400
 
     option_id = data.get("option_id")
-    if not option_id:
-        return {"error": "option_id is required"}, 400
+    if not isinstance(option_id, str):
+        return {"error": "option_id is required and must be a string"}, 400
 
     poll = Poll.query.get_or_404(poll_id)
     option = PollOption.query.get_or_404(option_id)
@@ -159,7 +165,12 @@ def vote_poll(poll_id: str):
 
     vote = PollVote(poll_id=poll.id, option_id=option.id, user_id=current_user.id)
     db.session.add(vote)
-    db.session.commit()
+    
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return {"error": "You have already voted on this poll"}, 409
 
     return {"success": True, "results": poll.get_results()}, 200
 

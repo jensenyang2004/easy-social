@@ -147,22 +147,38 @@
   }
 
   function renderPollResults(container, results, votedOptionId) {
-    container.innerHTML = results
-      .map(
-        (res) => `
-      <div class="poll-result-row">
-        <div class="poll-result-meta">
-          <span>${res.text}</span>
-          <span>${res.percentage}%</span>
-        </div>
-        <div class="poll-progress-bg ${res.option_id === votedOptionId ? "voted-for" : ""}">
-          <div class="poll-progress-fill" style="width: ${res.percentage}%"></div>
-          <div class="poll-progress-text">${res.votes} votes</div>
-        </div>
-      </div>
-    `
-      )
-      .join("");
+    container.replaceChildren();
+    results.forEach((res) => {
+      const row = document.createElement("div");
+      row.className = "poll-result-row";
+
+      const meta = document.createElement("div");
+      meta.className = "poll-result-meta";
+      const textSpan = document.createElement("span");
+      textSpan.textContent = res.text;
+      const pctSpan = document.createElement("span");
+      pctSpan.textContent = `${res.percentage}%`;
+      meta.append(textSpan, pctSpan);
+
+      const progressBg = document.createElement("div");
+      progressBg.className = "poll-progress-bg";
+      // Normalize both IDs to strings for safe strict comparison
+      if (String(res.option_id) === String(votedOptionId)) {
+        progressBg.classList.add("voted-for");
+      }
+
+      const fill = document.createElement("div");
+      fill.className = "poll-progress-fill";
+      fill.style.width = `${res.percentage}%`;
+
+      const progressText = document.createElement("div");
+      progressText.className = "poll-progress-text";
+      progressText.textContent = `${res.votes} votes`;
+
+      progressBg.append(fill, progressText);
+      row.append(meta, progressBg);
+      container.append(row);
+    });
   }
 
   function setupPollVoting() {

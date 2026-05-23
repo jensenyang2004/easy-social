@@ -107,7 +107,7 @@ class Post(db.Model):
 
 class Poll(db.Model):
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    post_id = db.Column(db.Integer, db.ForeignKey("post.id", ondelete="CASCADE"), nullable=False, index=True)
+    post_id = db.Column(db.Integer, db.ForeignKey("post.id", ondelete="CASCADE"), nullable=False, index=True, unique=True)
     created_at = db.Column(
         db.DateTime(timezone=True),
         nullable=False,

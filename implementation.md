@@ -40,7 +40,7 @@ One vote per user per poll (enforced by unique constraint).
 **Unique constraint:** `(poll_id, user_id)` — one vote per user per poll.
 
 ### Relationships
-```
+```text
 posts (1) ──── (1) polls (1) ──── (N) poll_options
                         │
                         └────── (N) poll_votes ──── (1) users
@@ -104,7 +104,16 @@ Response:
 ### GET `/api/polls/<poll_id>/results`
 Get current vote counts and percentages.
 
-Response: same format as the vote response above, plus `user_voted_option_id` if the current user has already voted.
+Response:
+```json
+{
+  "results": [
+    { "option_id": "...", "text": "Flask", "votes": 10, "percentage": 50.0 },
+    { "option_id": "...", "text": "Django", "votes": 6, "percentage": 30.0 }
+  ],
+  "user_voted_option_id": "uuid-of-option"
+}
+```
 
 ---
 
@@ -147,6 +156,6 @@ Response: same format as the vote response above, plus `user_voted_option_id` if
 ---
 
 ## Notes
-- All DB operations should use Supabase client.
-- Use Supabase Row Level Security (RLS) to ensure users can only insert their own votes.
-- The unique constraint on `(poll_id, user_id)` in `poll_votes` is the primary guard against double voting — enforce it at both the DB level and application level.
+- Database operations are performed via Flask-SQLAlchemy (connected to Supabase).
+- Use Supabase Row Level Security (RLS) to ensure users can only insert their own votes if accessing via Supabase directly.
+- The unique constraint on `(poll_id, user_id)` in `poll_votes` is the primary guard against double voting — enforced at both the DB level and application level.

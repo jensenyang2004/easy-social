@@ -11,55 +11,9 @@ Run with:  pytest -m e2e tests/test_e2e_playwright.py
 """
 
 from __future__ import annotations
-
-import tempfile
-import threading
-from pathlib import Path
-
 import pytest
-from werkzeug.serving import make_server
 
 pytest.importorskip("playwright", reason="playwright not installed — skipping E2E tests")
-
-from easy_social import create_app
-from easy_social.extensions import db
-
-# Cloudflare published test keys (always pass, safe to commit)
-_SITE_KEY = "1x00000000000000000000AA"
-_SECRET_KEY = "1x0000000000000000000000000000000AA"
-
-
-@pytest.fixture(scope="module")
-def captcha_live_server():
-    with tempfile.TemporaryDirectory() as temp_dir:
-        app = create_app(
-            {
-                "TESTING": True,
-                "SECRET_KEY": "test",
-                "SQLALCHEMY_DATABASE_URI": f"sqlite:///{Path(temp_dir) / 'e2e.sqlite'}",
-                "UPLOAD_FOLDER": str(Path(temp_dir) / "uploads"),
-                "MEDIA_STORAGE_BACKEND": "local",
-                "TURNSTILE_SITE_KEY": _SITE_KEY,
-                "TURNSTILE_SECRET_KEY": _SECRET_KEY,
-            }
-        )
-        with app.app_context():
-            db.create_all()
-
-        try:
-            server = make_server("127.0.0.1", 0, app, threaded=True)
-        except OSError:
-            pytest.skip("Could not bind to a local port")
-
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
-        thread.start()
-        base_url = f"http://127.0.0.1:{server.server_port}"
-
-        yield base_url
-
-        server.shutdown()
-        thread.join(timeout=5)
-
 
 @pytest.mark.e2e
 def test_register_with_turnstile_auto_pass(page, captcha_live_server):

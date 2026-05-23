@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload
 
 from .extensions import db
 from .media import save_media
-from .models import Comment, Post, User, followers
+from .models import Comment, Poll, PollOption, PollVote, Post, User, followers
 
 bp = Blueprint("social", __name__)
 
@@ -16,6 +16,7 @@ def _post_query():
     return Post.query.options(
         joinedload(Post.author),
         joinedload(Post.repost_of).joinedload(Post.author),
+        joinedload(Post.poll).joinedload(Poll.options),
     )
 
 
@@ -85,6 +86,96 @@ def explore():
     )
 
 
+@bp.post("/api/posts")
+@login_required
+def create_post_api():
+    data = request.get_json()
+    if not data:
+        return {"error": "Invalid JSON"}, 400
+
+    body = data.get("content", "").strip()
+    poll_data = data.get("poll")
+
+    if not body:
+        return {"error": "Content is required"}, 400
+
+    post = Post(body=body, author=current_user)
+    db.session.add(post)
+    db.session.flush()
+
+    poll_result = None
+    if poll_data:
+        options = poll_data.get("options", [])
+        if len(options) < 2 or len(options) > 4:
+            return {"error": "Poll must have between 2 and 4 options"}, 400
+
+        poll = Poll(post_id=post.id)
+        db.session.add(poll)
+        db.session.flush()
+
+        for i, opt_text in enumerate(options):
+            if not opt_text.strip():
+                return {"error": "All options must have text"}, 400
+            if len(opt_text) > 100:
+                return {"error": "Option text is too long"}, 400
+            db.session.add(PollOption(poll_id=poll.id, text=opt_text, order=i))
+
+        db.session.flush()
+        poll_result = {
+            "id": poll.id,
+            "options": [{"id": o.id, "text": o.text} for o in poll.options],
+        }
+
+    db.session.commit()
+
+    return {
+        "id": post.id,
+        "body": post.body,
+        "author_id": post.author_id,
+        "created_at": post.created_at.isoformat(),
+        "poll": poll_result,
+    }, 201
+
+
+@bp.post("/api/polls/<poll_id>/vote")
+@login_required
+def vote_poll(poll_id: str):
+    data = request.get_json()
+    if not data:
+        return {"error": "Invalid JSON"}, 400
+
+    option_id = data.get("option_id")
+    if not option_id:
+        return {"error": "option_id is required"}, 400
+
+    poll = Poll.query.get_or_404(poll_id)
+    option = PollOption.query.get_or_404(option_id)
+
+    if option.poll_id != poll.id:
+        return {"error": "Option does not belong to this poll"}, 400
+
+    if poll.get_user_vote(current_user.id):
+        return {"error": "You have already voted on this poll"}, 409
+
+    vote = PollVote(poll_id=poll.id, option_id=option.id, user_id=current_user.id)
+    db.session.add(vote)
+    db.session.commit()
+
+    return {"success": True, "results": poll.get_results()}, 200
+
+
+@bp.get("/api/polls/<poll_id>/results")
+@login_required
+def get_poll_results(poll_id: str):
+    poll = Poll.query.get_or_404(poll_id)
+    user_vote = poll.get_user_vote(current_user.id)
+
+    return {
+        "results": poll.get_results(),
+        "user_voted_option_id": user_vote.option_id if user_vote else None,
+    }, 200
+
+
 @bp.post("/posts")
 @login_required
 def create_post():
@@ -107,6 +198,26 @@ def create_post():
         author=current_user,
     )
     db.session.add(post)
+    db.session.flush()
+
+    poll_options = [o.strip() for o in request.form.getlist("poll_option") if o.strip()]
+    if poll_options:
+        if len(poll_options) < 2 or len(poll_options) > 4:
+            flash("Poll must have between 2 and 4 options.", "error")
+            db.session.rollback()
+            return redirect(request.referrer or url_for("social.feed"))
+
+        poll = Poll(post_id=post.id)
+        db.session.add(poll)
+        db.session.flush()
+
+        for i, opt_text in enumerate(poll_options):
+            if len(opt_text) > 100:
+                flash("Option text is too long.", "error")
+                db.session.rollback()
+                return redirect(request.referrer or url_for("social.feed"))
+            db.session.add(PollOption(poll_id=poll.id, text=opt_text, order=i))
+
     db.session.commit()
     return redirect(url_for("social.feed"))
 

@@ -383,3 +383,84 @@ button.secondary {
     flex-direction: column;
   }
 }
+
+/* Poll Post Styles */
+.composer-poll {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.poll-option-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.poll-display {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.poll-option-button {
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 10px 14px;
+  font-weight: 700;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.poll-option-button:hover {
+  background: #f0f8f9;
+}
+
+.poll-result-row {
+  display: grid;
+  gap: 4px;
+}
+
+.poll-result-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.poll-progress-bg {
+  background: #eef1f4;
+  height: 32px;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.poll-progress-fill {
+  background: #c5e1e5;
+  height: 100%;
+}
+
+.poll-progress-text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.poll-progress-bg.voted-for .poll-progress-fill {
+  background: #90c8cf;
+}

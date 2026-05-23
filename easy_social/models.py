@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timezone
 
 from flask_login import UserMixin
@@ -100,6 +101,75 @@ class Post(db.Model):
     @property
     def is_repost(self) -> bool:
         return self.repost_of_id is not None
+
+    poll = db.relationship("Poll", back_populates="post", uselist=False, cascade="all, delete-orphan")
+
+
+class Poll(db.Model):
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    post_id = db.Column(db.Integer, db.ForeignKey("post.id", ondelete="CASCADE"), nullable=False, index=True, unique=True)
+    created_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    post = db.relationship("Post", back_populates="poll")
+    options = db.relationship(
+        "PollOption", back_populates="poll", cascade="all, delete-orphan", order_by="PollOption.order"
+    )
+    votes = db.relationship("PollVote", back_populates="poll", cascade="all, delete-orphan")
+
+    def get_user_vote(self, user_id: int) -> PollVote | None:
+        return PollVote.query.filter_by(poll_id=self.id, user_id=user_id).first()
+
+    def get_results(self) -> list[dict]:
+        total_votes = len(self.votes)
+        results = []
+        for opt in self.options:
+            votes_count = len([v for v in self.votes if v.option_id == opt.id])
+            percentage = (votes_count / total_votes * 100) if total_votes > 0 else 0.0
+            results.append(
+                {
+                    "option_id": opt.id,
+                    "text": opt.text,
+                    "votes": votes_count,
+                    "percentage": round(percentage, 1),
+                }
+            )
+        return results
+
+
+class PollOption(db.Model):
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    poll_id = db.Column(db.String(36), db.ForeignKey("poll.id", ondelete="CASCADE"), nullable=False, index=True)
+    text = db.Column(db.String(100), nullable=False)
+    order = db.Column(db.Integer, nullable=False)
+
+    poll = db.relationship("Poll", back_populates="options")
+    votes = db.relationship("PollVote", back_populates="option", cascade="all, delete-orphan")
+
+
+class PollVote(db.Model):
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    poll_id = db.Column(db.String(36), db.ForeignKey("poll.id", ondelete="CASCADE"), nullable=False, index=True)
+    option_id = db.Column(
+        db.String(36), db.ForeignKey("poll_option.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    poll = db.relationship("Poll", back_populates="votes")
+    option = db.relationship("PollOption", back_populates="votes")
+    user = db.relationship("User")
+
+    __table_args__ = (
+        UniqueConstraint("poll_id", "user_id", name="uq_poll_user_vote"),
+    )
 
 
 class Comment(db.Model):

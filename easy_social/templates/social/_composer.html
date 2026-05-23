@@ -7,11 +7,20 @@
       <button type="button" class="link-button" data-media-preview-clear>Remove</button>
     </div>
   </div>
+  <div class="composer-poll" data-poll-container hidden>
+    <div class="poll-options" data-poll-options>
+      <!-- JS will inject options here -->
+    </div>
+    <button type="button" class="link-button" data-add-poll-option>+ Add option</button>
+  </div>
   <div class="composer-actions">
-    <label class="file-picker">
-      <span>Attach image/video</span>
-      <input type="file" name="media" accept="image/*,video/*" data-media-input>
-    </label>
+    <div class="composer-action-left">
+      <label class="file-picker">
+        <span>Attach media</span>
+        <input type="file" name="media" accept="image/*,video/*" data-media-input>
+      </label>
+      <button type="button" class="link-button" data-poll-toggle>Add Poll</button>
+    </div>
     <button type="submit">Post</button>
   </div>
 </form>

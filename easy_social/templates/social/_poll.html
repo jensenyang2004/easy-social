@@ -1,0 +1,24 @@
+{% set user_vote = content.poll.get_user_vote(current_user.id) %}
+<div class="poll-display" data-poll-id="{{ content.poll.id }}">
+  {% if user_vote %}
+    {% set results = content.poll.get_results() %}
+    {% for res in results %}
+      <div class="poll-result-row">
+        <div class="poll-result-meta">
+          <span>{{ res.text }}</span>
+          <span>{{ res.percentage }}%</span>
+        </div>
+        <div class="poll-progress-bg {{ 'voted-for' if user_vote.option_id == res.option_id else '' }}">
+          <div class="poll-progress-fill" style="width: {{ res.percentage }}%"></div>
+          <div class="poll-progress-text">{{ res.votes }} votes</div>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    {% for opt in content.poll.options %}
+      <button type="button" class="poll-option-button" data-poll-vote="{{ opt.id }}">
+        {{ opt.text }}
+      </button>
+    {% endfor %}
+  {% endif %}
+</div>
